@@ -1,0 +1,231 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <title>A股硬约束监控 7.0 - 许哲逻辑系统</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        body { font-family: 'PingFang SC', system-ui, sans-serif; background: #f0f2f5; padding: 20px; color: #1e293b; }
+        .container { max-width: 1200px; margin: 0 auto; background: white; padding: 30px; border-radius: 20px; box-shadow: 0 20px 50px rgba(0,0,0,0.1); }
+        h1 { color: #b91c1c; text-align: center; font-size: 26px; margin-bottom: 5px; }
+        
+        /* 核心依据展示区 */
+        .logic-board { display: grid; grid-template-columns: repeat(3, 1fr); gap: 15px; margin-bottom: 30px; background: #f8fafc; padding: 20px; border-radius: 12px; border: 1px solid #e2e8f0; }
+        .logic-card { padding: 15px; background: white; border-radius: 8px; border-top: 4px solid #b91c1c; box-shadow: 0 2px 4px rgba(0,0,0,0.05); }
+        .logic-card h4 { margin: 0 0 10px 0; color: #b91c1c; font-size: 15px; }
+        .logic-card p { font-size: 12px; color: #64748b; line-height: 1.5; margin: 0; }
+
+        .grid { display: grid; grid-template-columns: 360px 1fr; gap: 25px; }
+        .panel { border: 1px solid #e2e8f0; padding: 20px; border-radius: 12px; }
+        .panel h3 { margin-top: 0; font-size: 17px; margin-bottom: 15px; color: #0f172a; }
+
+        label { display: block; margin-bottom: 5px; font-weight: 600; font-size: 13px; }
+        input { width: 100%; padding: 10px; margin-bottom: 15px; border: 1px solid #cbd5e1; border-radius: 6px; }
+        
+        .btn-group { display: flex; flex-direction: column; gap: 8px; }
+        .btn { padding: 12px; border: none; border-radius: 6px; font-weight: bold; cursor: pointer; text-align: center; transition: 0.2s; }
+        .btn-save { background: #059669; color: white; }
+        .btn-view { background: #2563eb; color: white; }
+        .btn-clear { background: #94a3b8; color: white; font-size: 12px; margin-top: 10px; }
+
+        .alarm-zone { text-align: center; padding: 20px; border-radius: 10px; font-weight: bold; font-size: 18px; min-height: 80px; display: flex; align-items: center; justify-content: center; border: 2px solid transparent; margin-bottom: 15px; }
+        .status-ok { background: #f0fdf4; color: #166534; border-color: #bbf7d0; }
+        .status-danger { background: #fff1f2; color: #9f1239; border-color: #fecdd3; animation: pulse 1s infinite; }
+        @keyframes pulse { 0% { opacity: 1; } 50% { opacity: 0.8; } 100% { opacity: 1; } }
+        
+        .links { margin-bottom: 20px; display: flex; justify-content: flex-end; gap: 15px; font-size: 13px; }
+        .links a { color: #2563eb; text-decoration: none; font-weight: 600; }
+
+        #displayArea { display: none; margin-top: 25px; border-top: 2px dashed #e2e8f0; padding-top: 25px; }
+        .chart-container { height: 350px; margin-bottom: 25px; }
+        table { width: 100%; border-collapse: collapse; font-size: 12px; }
+        th, td { padding: 10px; border: 1px solid #e2e8f0; text-align: center; }
+        th { background: #f8fafc; }
+        .row-warn { color: #b91c1c; font-weight: bold; background: #fff1f2; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h1>A股泡沫“外部硬约束”监控系统 7.0</h1>
+    <p style="text-align:center; font-size: 13px; color: #64748b; margin-bottom: 20px;">—— 基于许哲《外部硬约束是唯一能让人冷静下来的东西》分析模型 ——</p>
+
+    <div class="logic-board">
+        <div class="logic-card">
+            <h4>依据一：流动性地心引力</h4>
+            <p>观察 1M Shibor 利率。当上涨需要消耗更多杠杆时，资金价格会飙升。<b>突破 1.6%</b> 即意味着进入强制冷静期。</p>
+        </div>
+        <div class="logic-card">
+            <h4>依据二：杠杆子弹极限</h4>
+            <p>观察两融余额。若<b>指数创新高而两融萎缩</b>，说明“接力棒”传不动了，先入者正在撤离，后入者资金枯竭。</p>
+        </div>
+        <div class="logic-card">
+            <h4>依据三：非理性浪漫度</h4>
+            <p>外部约束起效的背景。当全市场处于极度贪婪时，利率微升即可触发雪崩（需配合右上角情绪链接查看）。</p>
+        </div>
+    </div>
+
+    <div class="links">
+        <a href="http://www.chinamoney.com.cn/chinese/bkshibor/" target="_blank">🏦 查利率</a>
+        <a href="https://data.eastmoney.com/rzrq/total.html" target="_blank">📉 查两融</a>
+        <a href="https://app.jiucaishuo.com/pagesE/tool/fear_greed" target="_blank">🏮 查情绪</a>
+    </div>
+
+    <div class="grid">
+        <div class="panel">
+            <h3>客观数据录入</h3>
+            <label>观测日期</label>
+            <input type="date" id="dateInput">
+            <label>上证指数收盘位</label>
+            <input type="number" id="indexInput" placeholder="请输入点位">
+            <label>1M Shibor 利率 (%)</label>
+            <input type="number" step="0.001" id="shiborInput" placeholder="核心判定位">
+            <label>两融余额 (亿元)</label>
+            <input type="number" id="marginInput" placeholder="杠杆总规模">
+            
+            <div class="btn-group">
+                <button class="btn btn-save" onclick="handleLogic()">存入并进行逻辑分析</button>
+                <button class="btn btn-view" onclick="toggleHistory()">展开/收起 历史轨迹图</button>
+                <button class="btn btn-clear" onclick="clearData()">清空数据库</button>
+            </div>
+        </div>
+
+        <div class="panel">
+            <h3>许大模型分析结论</h3>
+            <div id="alarmBox" class="alarm-zone status-ok">
+                待检测：系统将根据物理上限给出建议。
+            </div>
+            <div id="reportArea" style="padding: 15px; background: #fffbeb; border-radius: 8px; font-size: 13px; border: 1px solid #fef3c7; line-height: 1.6;">
+                <strong>判定摘要：</strong><br>
+                输入数据后，系统将从流动性与杠杆背离角度进行回测。
+            </div>
+        </div>
+    </div>
+
+    <div id="displayArea">
+        <div class="chart-container">
+            <canvas id="mainChart"></canvas>
+        </div>
+        <h3>历史决策轨迹</h3>
+        <table id="historyTable">
+            <thead>
+                <tr>
+                    <th>日期</th>
+                    <th>指数</th>
+                    <th>利率(%)</th>
+                    <th>两融(亿)</th>
+                    <th>决策结果</th>
+                    <th>逻辑依据</th>
+                </tr>
+            </thead>
+            <tbody></tbody>
+        </table>
+    </div>
+</div>
+
+<script>
+    let stockData = JSON.parse(localStorage.getItem('stock_monitor_v7')) || [];
+    document.getElementById('dateInput').valueAsDate = new Date();
+
+    function handleLogic() {
+        const date = document.getElementById('dateInput').value;
+        const index = parseFloat(document.getElementById('indexInput').value);
+        const shibor = parseFloat(document.getElementById('shiborInput').value);
+        const margin = parseFloat(document.getElementById('marginInput').value);
+
+        if(!date || isNaN(index) || isNaN(shibor) || isNaN(margin)) {
+            alert("请完整填写所有客观参数！"); return;
+        }
+
+        const currentEntry = { date, index, shibor, margin };
+        
+        // 执行分析引擎
+        const analysis = runEngine(currentEntry);
+        currentEntry.decision = analysis.decision;
+        currentEntry.reason = analysis.reason;
+
+        stockData.push(currentEntry);
+        stockData.sort((a,b) => new Date(a.date) - new Date(b.date));
+        localStorage.setItem('stock_monitor_v7', JSON.stringify(stockData));
+        
+        // 更新 UI
+        document.getElementById('alarmBox').className = "alarm-zone " + (analysis.level > 0 ? "status-danger" : "status-ok");
+        document.getElementById('alarmBox').innerHTML = analysis.decision;
+        document.getElementById('reportArea').innerHTML = "<strong>判定摘要：</strong><br>" + analysis.reason.replace(/\|/g, '<br>');
+        
+        renderTable();
+        if(document.getElementById('displayArea').style.display === 'block') renderChart();
+    }
+
+    function runEngine(curr) {
+        let level = 0;
+        let reasons = [];
+        
+        // 逻辑1：1.6% 绝对硬约束
+        if (curr.shibor >= 1.6) {
+            level = 2;
+            reasons.push("🚨 Shibor 1.6%：钱的价格已到物理上限，地心引力无法违背。");
+        }
+
+        // 逻辑2：背离回测
+        if (stockData.length > 0) {
+            const last = stockData[stockData.length - 1];
+            if (curr.index > last.index && curr.margin < last.margin) {
+                level = 2;
+                reasons.push("📉 两融背离：指数上涨但杠杆减少，说明先入者在加速兑现。");
+            }
+            if (curr.index > last.index && curr.shibor > last.shibor) {
+                level = Math.max(level, 1);
+                reasons.push("⚠️ 利率上行：维持指数的成本在增加，旁氏结构脆弱。");
+            }
+        }
+
+        return {
+            level: level,
+            decision: level >= 2 ? "【清盘信号】硬约束已生效" : (level === 1 ? "【警报】地心引力增强" : "【持仓】环境尚可支撑"),
+            reason: reasons.length > 0 ? reasons.join(" | ") : "数据处于健康博弈区间。"
+        };
+    }
+
+    function toggleHistory() {
+        const area = document.getElementById('displayArea');
+        area.style.display = (area.style.display === 'none' || area.style.display === '') ? 'block' : 'none';
+        if(area.style.display === 'block') { renderChart(); renderTable(); }
+    }
+
+    function renderTable() {
+        const tbody = document.querySelector('#historyTable tbody');
+        tbody.innerHTML = '';
+        stockData.slice().reverse().forEach(d => {
+            tbody.innerHTML += `<tr class="${d.decision.includes('清盘') ? 'row-warn' : ''}">
+                <td>${d.date}</td><td>${d.index}</td><td>${d.shibor}%</td><td>${d.margin}</td>
+                <td>${d.decision}</td><td style="text-align:left">${d.reason}</td>
+            </tr>`;
+        });
+    }
+
+    let myChart;
+    function renderChart() {
+        const ctx = document.getElementById('mainChart').getContext('2d');
+        if (myChart) myChart.destroy();
+        myChart = new Chart(ctx, {
+            type: 'line',
+            data: {
+                labels: stockData.map(d => d.date),
+                datasets: [
+                    { label: '指数', data: stockData.map(d => d.index), borderColor: '#b91c1c', yAxisID: 'y' },
+                    { label: '利率%', data: stockData.map(d => d.shibor), borderColor: '#2563eb', yAxisID: 'y1' }
+                ]
+            },
+            options: { responsive: true, maintainAspectRatio: false }
+        });
+    }
+
+    function clearData() {
+        if(confirm("确定永久清空所有回测轨迹？")) {
+            stockData = []; localStorage.removeItem('stock_monitor_v7'); location.reload();
+        }
+    }
+</script>
+</body>
+</html>
